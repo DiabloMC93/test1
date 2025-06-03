@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuestionario Interactivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Estilo para deshabilitar clics después de responder una pregunta */
+        .answered label {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .question-card {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .nav-button {
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+        }
+        .nav-button:hover {
+            transform: translateY(-2px);
+        }
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .option-label:hover {
+             background-color: #374151; /* slate-700 for hover */
+        }
+        .option-label.selected {
+            background-color: #111618; /* sky-600 */
+            border-color: #000000; /* sky-500 */
+        }
+        .option-label.correct {
+            background-color: #166534 !important; /* green-700 */
+            border-color: #15803d !important; /* green-600 */
+            color: white;
+        }
+        .option-label.incorrect-selected {
+            background-color: #9f1239 !important; /* rose-700 */
+            border-color: #e11d48 !important; /* rose-600 */
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-neutral-900 text-gray-100 min-h-screen p-4 sm:p-8 flex flex-col items-center justify-center">
+
+    <div class="w-full max-w-2xl bg-slate-800 p-6 sm:p-8 rounded-xl shadow-2xl">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-sky-400">Cuestionario de Soporte Vital</h1>
+            <p class="text-slate-400 mt-2">Selecciona una respuesta para cada pregunta.</p>
+            <p class="text-xs text-amber-400 mt-2">
+                <strong>Importante:</strong> CREADO POR JMC.
+            </p>
+        </header>
+
+        <div id="score-board" class="flex justify-around mb-6 p-4 bg-slate-700 rounded-lg shadow-md text-sm sm:text-base">
+            <div>
+                <span class="font-semibold text-green-400">Acertadas: </span>
+                <span id="correct-count" class="text-lg font-bold text-green-300">0</span>
+            </div>
+            <div>
+                <span class="font-semibold text-red-400">Falladas: </span>
+                <span id="incorrect-count" class="text-lg font-bold text-red-300">0</span>
+            </div>
+            <div>
+                <span class="font-semibold text-blue-400">Pendientes: </span>
+                <span id="pending-count" class="text-lg font-bold text-blue-300">0</span>
+            </div>
+        </div>
+
+        <div id="question-area" class="mb-6">
+            <div id="question-counter" class="text-center text-slate-400 mb-4 font-semibold"></div>
+            <div id="current-question-card" class="question-card bg-slate-800 p-0 rounded-lg">
+                </div>
+        </div>
+
+        <div id="navigation-controls" class="flex justify-between items-center mb-6">
+            <button id="prev-btn" onclick="previousQuestion()" class="nav-button bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-4 sm:px-6 rounded-lg shadow-md">Anterior</button>
+            <button id="next-btn" onclick="nextQuestion()" class="nav-button bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-4 sm:px-6 rounded-lg shadow-md">Siguiente</button>
+        </div>
+        
+        <div id="feedback-message" class="text-center h-6 mb-4">
+            </div>
+
+        <div id="final-score-container" class="mt-8 p-6 bg-slate-700 rounded-lg shadow-md text-center hidden">
+            <h2 class="text-2xl font-bold text-sky-400 mb-4">¡Cuestionario Completado!</h2>
+            <p class="text-xl">Tu puntuación final es:</p>
+            <p class="text-3xl font-bold my-2">
+                <span id="final-correct" class="text-green-400">0</span> Acertadas / <span id="final-total" class="text-gray-100">0</span> Totales
+            </p>
+            <button onclick="restartQuiz()" class="mt-6 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-8 rounded-lg shadow transition-colors duration-150 text-lg">
+                Reiniciar Cuestionario
+            </button>
+        </div>
+
+    </div>
+
+    <footer class="mt-10 text-center text-sm text-slate-500">
+        <p>&copy; 2025 Cuestionario Interactivo. Adaptado para fines demostrativos.</p>
+    </footer>
+
+    <script>
+        // --- DATOS DE LAS PREGUNTAS ---
+        // IMPORTANTE: Debes rellenar este array con todas tus preguntas.
+        // 'id': Un identificador único para la pregunta.
+        // 'question': El texto de la pregunta.
+        // 'options': Un array de strings, donde cada string es una opción de respuesta.
+        // 'correctAnswerIndex': El índice (empezando en 0) de la respuesta correcta en el array 'options'.
+        //                     ¡ESTE ES EL CAMPO MÁS IMPORTANTE QUE DEBES CONFIGURAR CORRECTAMENTE!
+        // 'selectedAnswerIndex': null por defecto, se actualiza cuando el usuario responde.
+        // 'isCorrect': null por defecto, se actualiza a true/false después de responder.
+
+        let questionsData = [
+            {
+    "id": 1,
+    "question": "1. Cuál de los siguientes elementos NO es un eslabón de la cadena de supervivencia",
+    "options": [
+      "Llamar al teléfono de emergencia sin demora",
+      "La RCP básica sin demora",
+      "La desfibrilación temprana",
+      "La cirugía de urgencia es el problema si el problema es quirúrgico",
+      "La resucitación cardiopulmonar avanzada"
+    ],
+    "correctAnswerIndex": 3,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 2,
+    "question": "2. Cuando llama ud al teléfono de emergencia debe hacer todo lo siguiente excepto:",
+    "options": [
+      "Identificarse e informar desde dónde llama",
+      "Explicar la causa de la llamada",
+      "Informar del lugar exacto en el que se encuentra la víctima o víctimas",
+      "Contestar a las preguntas de la forma más escueta posible",
+      "Una vez que usted considera que ha transmitido la información, cuelgue inmediatamente para evitar que la operadora le entretenga un tiempo excesivo"
+    ],
+    "correctAnswerIndex": 4,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 3,
+    "question": "3. Cuál es el número de emergencia recomendado por la UE para todos sus miembros",
+    "options": [
+      "088",
+      "112",
+      "911",
+      "061",
+      "Cada país tiene su propio número"
+    ],
+    "correctAnswerIndex": 1,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 4,
+    "question": "4. Ante una opresión en el pecho que se extiende a los brazos y se acompaña de sudoración y nauseas, deberá usted llamar al teléfono de emergencias:",
+    "options": [
+      "Si la molestia dura más de 5min, aunque sea ligera",
+      "Si la molestia dura más de 15min y es muy intensa. Si es ligera vaya ud a su medico",
+      "Si la molestia dura más de 30min, aunque sea ligera",
+      "Si la molestia dura más de 60min, pero sólo si es intensa",
+      "Sólo si no cede en 2h a pesar de estar en reposo en cama"
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 5,
+    "question": "5. Para iniciar la ventilación artificial boca a boca lo primero que hay que hacer es:",
+    "options": [
+      "Conseguir una bala de oxigeno",
+      "Que al menos dos personas puedan colaborar en la puesta en marcha de la maniobra",
+      "Colocar a la víctima en decúbito prono",
+      "Abrir la vía aérea con la maniobra frente mentón",
+      "Todas las anteriores"
+    ],
+    "correctAnswerIndex": 3,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 6,
+    "question": "6. Somos testigos de una aparente pérdida brusca de conciencia. ¿qué hacemos?",
+    "options": [
+      "Llamar al 112",
+      "Poner en posición de seguridad y pedir ayuda",
+      "Ventilar 10 veces y pedir ayuda",
+      "Comprobar si la víctima está consciente, gritar y zarandear",
+      "Hacer 30 compresiones y pedir ayuda"
+    ],
+    "correctAnswerIndex": 3,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 7,
+    "question": "7. Cuando una víctima ha sufrido una aparente pérdida del conocimiento y responde a los estímulos, ¿qué hacemos?",
+    "options": [
+      "Observar y, si es preciso, pedir ayuda.",
+      "Comprobar si respira",
+      "Poner en posición de seguridad y pedir ayuda",
+      "Abrir vía aérea",
+      "Ventilar 10 veces y pedir ayuda"
+    ],
+    "correctAnswerIndex": 2,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 8,
+    "question": "8. Cuando una víctima ha sufrido una aparente pérdida del conocimiento y no responde a los estímulos, ¿qué hacemos?",
+    "options": [
+      "Llamar al 112, informando de que se ha producido una posible parada cardiaca",
+      "Poner en posición de seguridad y pedir ayuda",
+      "Ventilar 10 veces y abrir la vía aérea",
+      "Comenzar con las compresiones torácicas y pedir ayuda",
+      "Pedir ayuda a otros testigos y abrir la vía aérea"
+    ],
+    "correctAnswerIndex": 4,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 9,
+    "question": "9. No responde a estimulos y hemos efectuado el paso anterior. ¿qué hacemos?",
+    "options": [
+      "Observar y, si es preciso, pedir ayuda",
+      "Comprobar si respira",
+      "Poner en posición lateral de seguridad y pedir ayuda",
+      "Ventilar 10 veces y pedir ayuda",
+      "Tras 30 compresiones torácicas, abrir la vía aérea y administrar dos ventilaciones"
+    ],
+    "correctAnswerIndex": 1,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 10,
+    "question": "10. Ante un paciente que ha perdido el conocimiento y no respira, ¿qué hay que hacer?",
+    "options": [
+      "Observar y pedir ayuda",
+      "Poner en posición de seguridad y pedir ayuda",
+      "Llamar al 112 e iniciar las compresiones torácicas y las ventilaciones",
+      "Ventilar 10 veces, pedir ayuda y buscar signos de circulación",
+      "Si es un niño, antes de pedir ayuda haremos maniobras de RCP durante 5min"
+    ],
+    "correctAnswerIndex": 2,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 11,
+    "question": "11. ¿cuál de las técnicas usadas habitualmente en los atragantamientos no debe usarse en los lactantes?",
+    "options": [
+      "Las palmadas en la espalda",
+      "Las compresiones abdominales",
+      "Las compresiones torácicas",
+      "Intentar la ventilación artificial",
+      "Extracción de cuerpo extraño visible con la maniobra de gancho"
+    ],
+    "correctAnswerIndex": 1,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 12,
+    "question": "12. Cuál de estas afirmaciones es FALSA",
+    "options": [
+      "Para detener una hemorragia grave en una extremidad lo mejor es hacer un torniquete",
+      "En los accidentes de tráfico, si es posible, es mejor no mover a la víctima",
+      "Los niños menores de 13 años no deben sentarse en el asiento delantero de un vehículo dotado de airbag",
+      "En los niños y los adolescentes, la principal estrategia para disminuir la incidencia de la parada cardíaca consiste en la prevención de los accidentes, tanto caseros como de tráfico, ya que constituyen la primera causa de mortalidad",
+      "En el lactante la ventilación artificial se realiza con la técnica boca a boca-nariz, insuflando más lentamente que en el adulto, mientras se mantiene abierta la vía aérea con la maniobra frente-mentón, si bien la cabeza se ha de mantener menos extendida que en los adultos"
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 13,
+    "question": "13. ¿cuándo debe utilizarse la maniobra de Heimlich o compresiones bruscas abdominales?",
+    "options": [
+      "Cuando la víctima pierde la conciencia",
+      "Cuando la víctima es un lactante",
+      "Cuando la víctima tose",
+      "Cuando la víctima vomita",
+      "Cuando la víctima de un atragantamiento no puede hablar ni toser, y la obstrucción persiste después de cinco palmadas en la espalda"
+    ],
+    "correctAnswerIndex": 4,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 14,
+    "question": "14. ¿cuándo, en un atragantamiento, deben utilizarse los dedos para realizar, mediante la maniobra de gancho con el dedo índice, un barrido a ciegas de la boca de la víctima en busca de un cuerpo extraño?",
+    "options": [
+      "Cuando la víctima pierde la conciencia",
+      "Después de las compresiones torácicas",
+      "Cuando no podemos ventilar",
+      "Al realizar la apertura de la vía aérea",
+      "Nunca"
+    ],
+    "correctAnswerIndex": 4,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 15,
+    "question": "15. Durante la RCP básica en el lactante:",
+    "options": [
+      "Antes de iniciar las compresiones torácicas se administrarán cinco ventilaciones",
+      "Cuando sólo se dispone de un reanimador, lo primero que deberá hacer es llamar al 112",
+      "Las compresiones se administrarán colocando ambas manos en el centro del tórax",
+      "La valoración de la respiración no debe llevarnos más de 5seg",
+      "La secuencia de compresiones y ventilaciones es 15:2, en vez de 30:2"
+    ],
+    "correctAnswerIndex": 1,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 16,
+    "question": "16. Qué porcentaje identifica los DESA entre los pacientes que no precisen una desfibrilación",
+    "options": [
+      "20%",
+      "30-50%",
+      "50-70%",
+      "70-90%",
+      "99-100%"
+    ],
+    "correctAnswerIndex": 4,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 17,
+    "question": "17. ¿Dónde debemos situar las palas o electrodos de un DESA?",
+    "options": [
+      "Uno en la espalda y otro en el pecho",
+      "En los hombros, encima de cada tetilla y en las mujeres, al lado de éstas",
+      "Uno bajo la clavícula derecha y otro en el costado izquierdo a unos 5cm de la axila",
+      "En cada hombro",
+      "Da igual, siempre que ambos se sitúen en el pecho"
+    ],
+    "correctAnswerIndex": 2,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 18,
+    "question": "18. ¿Qué hacer antes de colocar las palas o electrodos de un DESA si la víctima está empapada en sudor?",
+    "options": [
+      "Colocar directamente las dos palas o electrodos",
+      "Secar el sudor de toda la cara anterior del pecho y colocar las palas o electrodos",
+      "Utilizar una almohadilla especial entre la piel y las palas o electrodos",
+      "Colocar las dos palas en la espalda",
+      "No se puede utilizar el DESA en pacientes con sudor"
+    ],
+    "correctAnswerIndex": 1,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 19,
+    "question": "19. Qué debemos hacer cuando un DESA avisa de que está analizando ritmo",
+    "options": [
+      "No hablar",
+      "No tocar al paciente y evitar que alguien lo toque",
+      "Continuar la RCP",
+      "Mantener abierta la vía aérea",
+      "Comprobar si el paciente tiene pulso"
+    ],
+    "correctAnswerIndex": 1,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+  {
+    "id": 20,
+    "question": "20. Qué debemos hacer cuando vamos a apretar el botón para que el DESA de una descarga",
+    "options": [
+      "Avisar para que nadie toque a la víctima",
+      "Avisar para que nadie hable",
+      "Continuar con la RCP",
+      "Mantener abierta la vía aérea",
+      "No apartar la vista del DESA"
+    ],
+    "correctAnswerIndex": 0,
+    "selectedAnswerIndex": null,
+    "isCorrect": null
+  },
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = { correct: 0, incorrect: 0 };
+
+        const questionCardEl = document.getElementById('current-question-card');
+        const correctCountEl = document.getElementById('correct-count');
+        const incorrectCountEl = document.getElementById('incorrect-count');
+        const pendingCountEl = document.getElementById('pending-count');
+        const finalScoreContainer = document.getElementById('final-score-container');
+        const finalCorrectEl = document.getElementById('final-correct');
+        const finalTotalEl = document.getElementById('final-total');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const questionCounterEl = document.getElementById('question-counter');
+        const feedbackMessageEl = document.getElementById('feedback-message');
+        const questionAreaEl = document.getElementById('question-area');
+        const navigationControlsEl = document.getElementById('navigation-controls');
+        const scoreBoardEl = document.getElementById('score-board');
+
+
+        function displayCurrentQuestion() {
+            if (currentQuestionIndex >= questionsData.length) {
+                showFinalScore();
+                return;
+            }
+            questionAreaEl.classList.remove('hidden');
+            navigationControlsEl.classList.remove('hidden');
+            scoreBoardEl.classList.remove('hidden');
+            finalScoreContainer.classList.add('hidden');
+
+
+            const qData = questionsData[currentQuestionIndex];
+            questionCardEl.style.opacity = 0; // Para efecto de fade
+
+            // Pequeño retraso para que la transición de opacidad sea visible
+            setTimeout(() => {
+                let optionsHTML = '';
+                qData.options.forEach((option, optionIndex) => {
+                    let labelClasses = "option-label block p-3 my-2 rounded-md border border-slate-600 transition-colors duration-150 cursor-pointer";
+                    // Si la pregunta ya fue respondida, aplicar estilos
+                    if (qData.selectedAnswerIndex !== null) {
+                        if (optionIndex === qData.correctAnswerIndex) {
+                            labelClasses += ' correct';
+                        }
+                        if (optionIndex === qData.selectedAnswerIndex) {
+                            labelClasses += qData.isCorrect ? ' selected' : ' incorrect-selected selected';
+                        }
+                    }
+
+                    optionsHTML += `
+                        <label class="${labelClasses}">
+                            <input type="radio" name="question-${qData.id}" value="${optionIndex}" class="mr-3 sr-only" 
+                                   onchange="handleAnswer(${optionIndex})" ${qData.selectedAnswerIndex !== null ? 'disabled' : ''}>
+                            ${String.fromCharCode(97 + optionIndex)}) ${option}
+                        </label>
+                    `;
+                });
+
+                questionCardEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h3 class="text-lg sm:text-xl font-semibold mb-4 text-sky-300">${qData.question}</h3>
+                        <span id="feedback-icon-${qData.id}" class="text-2xl ml-4">
+                            ${qData.selectedAnswerIndex !== null ? (qData.isCorrect ? '<span class="text-green-500">✔</span>' : '<span class="text-red-500">✖</span>') : ''}
+                        </span>
+                    </div>
+                    <div class="options-container space-y-2 ${qData.selectedAnswerIndex !== null ? 'answered' : ''}">
+                        ${optionsHTML}
+                    </div>
+                `;
+                questionCardEl.style.opacity = 1;
+            }, 100); // 100ms para el fade, puedes ajustar
+
+            updateNavigationButtons();
+            updateScoreDisplay();
+            questionCounterEl.textContent = `Pregunta ${currentQuestionIndex + 1} de ${questionsData.length}`;
+            feedbackMessageEl.textContent = ''; // Limpiar mensaje de feedback
+        }
+
+        function handleAnswer(selectedOptionIndex) {
+            const qData = questionsData[currentQuestionIndex];
+            if (qData.selectedAnswerIndex !== null) return; // Ya respondida
+
+            qData.selectedAnswerIndex = selectedOptionIndex;
+            const feedbackIconEl = document.getElementById(`feedback-icon-${qData.id}`);
+
+            if (selectedOptionIndex === qData.correctAnswerIndex) {
+                qData.isCorrect = true;
+                score.correct++;
+                if(feedbackIconEl) feedbackIconEl.innerHTML = '<span class="text-green-500">✔</span>';
+            } else {
+                qData.isCorrect = false;
+                score.incorrect++;
+                if(feedbackIconEl) feedbackIconEl.innerHTML = '<span class="text-red-500">✖</span>';
+            }
+            
+            // Re-renderizar la pregunta actual para mostrar los estilos de correcto/incorrecto y deshabilitar opciones
+            displayCurrentQuestion(); 
+            updateScoreDisplay();
+        }
+
+        function updateNavigationButtons() {
+            prevBtn.disabled = currentQuestionIndex === 0;
+            if (currentQuestionIndex === questionsData.length -1) {
+                 nextBtn.textContent = "Finalizar";
+            } else if (currentQuestionIndex >= questionsData.length) {
+                 nextBtn.classList.add('hidden'); // Ocultar si ya se finalizó
+                 prevBtn.classList.add('hidden');
+            }
+            else {
+                nextBtn.textContent = "Siguiente";
+                nextBtn.classList.remove('hidden');
+                prevBtn.classList.remove('hidden');
+            }
+        }
+        
+        function nextQuestion() {
+            const qData = questionsData[currentQuestionIndex];
+            if (qData.selectedAnswerIndex === null && currentQuestionIndex < questionsData.length) {
+                feedbackMessageEl.textContent = 'Por favor, selecciona una opción antes de continuar.';
+                setTimeout(() => { feedbackMessageEl.textContent = ''; }, 3000);
+                return;
+            }
+
+            if (currentQuestionIndex < questionsData.length - 1) {
+                currentQuestionIndex++;
+                displayCurrentQuestion();
+            } else if (currentQuestionIndex === questionsData.length - 1) {
+                // Última pregunta, mostrar puntaje final
+                currentQuestionIndex++; // Para que la condición de finalización se cumpla
+                showFinalScore();
+            }
+        }
+
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                displayCurrentQuestion();
+            }
+        }
+
+        function updateScoreDisplay() {
+            correctCountEl.textContent = score.correct;
+            incorrectCountEl.textContent = score.incorrect;
+            const answeredCount = score.correct + score.incorrect;
+            pendingCountEl.textContent = questionsData.length - answeredCount;
+        }
+
+        function showFinalScore() {
+            questionAreaEl.classList.add('hidden');
+            navigationControlsEl.classList.add('hidden');
+            scoreBoardEl.classList.add('hidden');
+            feedbackMessageEl.textContent = '';
+
+            finalCorrectEl.textContent = score.correct;
+            finalTotalEl.textContent = questionsData.length;
+            finalScoreContainer.classList.remove('hidden');
+            finalScoreContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            score = { correct: 0, incorrect: 0 };
+            questionsData.forEach(q => {
+                q.selectedAnswerIndex = null;
+                q.isCorrect = null;
+            });
+            finalScoreContainer.classList.add('hidden');
+            displayCurrentQuestion();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (questionsData.length > 0) {
+                displayCurrentQuestion();
+            } else {
+                questionCardEl.innerHTML = '<p class="text-center text-red-400">No hay preguntas cargadas. Por favor, añade preguntas en el array `questionsData` en el script.</p>';
+                navigationControlsEl.classList.add('hidden');
+                scoreBoardEl.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

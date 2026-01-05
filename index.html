@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examen de Geriatría - Modo Oscuro</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --primary: #bb86fc;
+            --correct: #4caf50;
+            --incorrect: #f44336;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            padding: 20px;
+            margin-bottom: 100px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+        }
+
+        /* Marcador flotante */
+        .score-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--primary);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .marker-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .marker-dot {
+            width: 25px;
+            height: 25px;
+            background: var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            cursor: pointer;
+        }
+
+        .question-card {
+            background: var(--card-bg);
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid var(--primary);
+        }
+
+        .options-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .option {
+            background: #2a2a2a;
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .option:hover {
+            background: #333;
+        }
+
+        .option.selected-correct {
+            background: rgba(76, 175, 80, 0.2) !important;
+            border-color: var(--correct) !important;
+            color: var(--correct);
+        }
+
+        .option.selected-incorrect {
+            background: rgba(244, 67, 54, 0.2) !important;
+            border-color: var(--incorrect) !important;
+            color: var(--incorrect);
+        }
+
+        .option.reveal-correct {
+            border-color: var(--correct) !important;
+            border-style: dashed;
+        }
+
+        .marker-dot.correct { background: var(--correct); color: white; }
+        .marker-dot.incorrect { background: var(--incorrect); color: white; }
+
+        @media (max-width: 1000px) {
+            .score-panel {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="score-panel">
+    <strong>Progreso</strong>
+    <div id="stats">Correctas: 0 | Erróneas: 0</div>
+    <div class="marker-grid" id="markerGrid"></div>
+</div>
+
+<div class="container">
+    <h1>Test de Geriatría</h1>
+    <div id="quiz-container"></div>
+</div>
+
+<script>
+    const questions = [
+        {
+            id: 2,
+            q: "Señala la respuesta CORRECTA. Según la clasificación de personas mayores para la ordenación de los servicios sanitarios. Persona mayor sana es:",
+            options: [
+                "Son personas cuyas características físicas, mentales y sociales están de acuerdo con su edad social.",
+                "Son personas cuyas características físicas, mentales y sociales están de acuerdo con su edad mental.",
+                "Son personas cuyas características físicas, mentales y sociales están de acuerdo con su edad cronológica.",
+                "Son personas mayores de 65 años sin ninguna enfermedad."
+            ],
+            correct: 2 // c [cite: 3, 7, 8]
+        },
+        {
+            id: 3,
+            q: "Necesitamos una clasificación de las personas mayores para optimizar la atención sanitaria. Los pacientes geriátricos:",
+            options: [
+                "Son pacientes ancianos con 75 años y algún requisito más como enfermedad incapacitante.",
+                "Son todos los pacientes mayores de 80 años que tienen pluripatología.",
+                "Son pacientes que además de pluripatología tengan problemas mentales.",
+                "Son pacientes ancianos con cualquier edad que cumplan tres requisitos característicos."
+            ],
+            correct: 3 // d [cite: 10, 15]
+        },
+        {
+            id: 4,
+            q: "Es INCIERTO que los rasgos de personalidad en la ancianidad: (menos una):",
+            options: [
+                "Cuando hay alteraciones de personalidad en ancianos se benefician mucho de la atención psiquiátrica especializada.",
+                "Tras la crisis existencial de la cuarta década se favorecen generalmente alteraciones patológicas en la ancianidad.",
+                "A partir de la edad adulta en la tercera década generalmente se mantiene la personalidad.",
+                "Hay un aumento de las depresiones características de los ancianos independientemente de su personalidad."
+            ],
+            correct: 0 // a [cite: 16, 17]
+        },
+        {
+            id: 5,
+            q: "El descenso de la tasa de fecundidad en España como factor de envejecimiento NO se caracteriza:",
+            options: [
+                "De lo más bajos de Europa.",
+                "Ha sido muy lento.",
+                "Se explica por retraso de edad de uniones estables.",
+                "Edad de maternidad tardía."
+            ],
+            correct: 1 // b (ha sido muy rápido en realidad) [cite: 25, 28]
+        },
+        {
+            id: 6,
+            q: "Para la analgesia en ancianos se debe emplear:",
+            options: [
+                "Opiáceos menores.",
+                "Siempre morfina.",
+                "Opiáceos mayores.",
+                "Una combinación de ellos según el caso."
+            ],
+            correct: 3 // d [cite: 31, 35]
+        },
+        {
+            id: 7,
+            q: "Señala incorrecta. La geriatría es una ciencia multidisciplinar que necesita la participación de profesionales sanitarios:",
+            options: [
+                "Trabajador social.",
+                "Psicólogo.",
+                "Médico.",
+                "Enfermero.",
+                "Fisioterapeuta."
+            ],
+            correct: 0 // a (El trabajador social no se suele clasificar estrictamente como sanitario en este contexto académico) [cite: 36, 38]
+        },
+        {
+            id: 9,
+            q: "La conducta humana hacia los problemas de la ancianidad a lo largo de la historia se ha ido modificando en relación a la sociedad. ¿Cuál piensas que es la situación en la actualidad y futura?",
+            options: [
+                "Los cuidados son dados por profesionales formados específicamente.",
+                "Se cuida por bien espiritual u obligación moral. Aparecen los Gerokomos.",
+                "Los ancianos son abandonados por la supervivencia del grupo.",
+                "Se cuida bajo preceptos legislados por normas y leyes antiguas."
+            ],
+            correct: 0 // a [cite: 43, 46]
+        },
+        {
+            id: 11,
+            q: "Recomendaciones prácticas para prevenir o actuar en alteraciones de necesidad de respirar: (SEÑALAR LA RESPUESTA FALSA):",
+            options: [
+                "Procurar la realización de una actividad física moderada.",
+                "Correcta ingesta de líquidos.",
+                "Recomendar ambientes adecuados.",
+                "Aconsejar el tabaco.",
+                "Evitar la obesidad."
+            ],
+            correct: 3 // d [cite: 50, 55]
+        },
+        {
+            id: 12,
+            q: "En pacientes con Síndrome de Últimos Días se usan derivados opiáceos mayores, sobre todo morfina. ES VERDAD QUE:",
+            options: [
+                "Para convertir dosis de una vía a otra sabemos que hay una relación numérica entre ellas.",
+                "La titulación de analgésico morfínico en los últimos días se realiza en unidades especializadas.",
+                "La vía intramuscular es la más usada para su administración.",
+                "Para pasar de una vía a otra de administración de morfina es necesario comenzar a titular desde cero."
+            ],
+            correct: 0 // a [cite: 57, 59]
+        },
+        {
+            id: 13,
+            q: "Señale la FALSA. Respecto a las teorías sobre el proceso de envejecimiento hay diferentes líneas de investigación:",
+            options: [
+                "Teorías bioquímicas y metabólicas.",
+                "Teorías fisiológicas.",
+                "Teorías genéticas.",
+                "Teorías óseas."
+            ],
+            correct: 3 // d [cite: 65, 70]
+        },
+        {
+            id: 15,
+            q: "El profesional de enfermería debe desarrollar en la atención geriátrica diferentes roles según su lugar de actuación. Entre ellos NO está:",
+            options: [
+                "Docencia y formación.",
+                "Investigación.",
+                "Secretariado de otros profesionales.",
+                "Cuidados o asistencia directa y educación sanitaria."
+            ],
+            correct: 2 // c [cite: 71, 75]
+        },
+        {
+            id: 16,
+            q: "Según la clasificación de personas mayores para la ordenación de los servicios sanitarios. Con respecto a la persona mayor enferma, señala la contestación FALSA:",
+            options: [
+                "El objetivo que perseguimos es rehabilitador.",
+                "Su responsabilidad recae exclusivamente en la atención especializada.",
+                "El objetivo que perseguimos es preventivo.",
+                "El objetivo que perseguimos es asistencial."
+            ],
+            correct: 1 // b [cite: 77, 80]
+        },
+        {
+            id: 17,
+            q: "Señala la respuesta INCORRECTA. La mujer tiene mayor vulnerabilidad en la ancianidad por:",
+            options: [
+                "Menor poder económico.",
+                "Menor capacidad física.",
+                "Mayor carga de enfermedades crónicas.",
+                "Ros social de ama de casa."
+            ],
+            correct: 3 // d [cite: 83, 88]
+        },
+        {
+            id: 18,
+            q: "Debido a los avances sociales y sanitarios y a la profesionalización de los cuidados de las personas mayores, cada vez son más frecuentes las demandas y denuncias por negligencias en el tratamiento de las lesiones asociadas a dependencia (UPP):",
+            options: [
+                "Las UPP son inevitables por lo que todas las demandas son sobreseídas.",
+                "Las demandas judiciales contra enfermeros se deben a realizar mala praxis en su tratamiento y prevención.",
+                "Las UPP son prevenibles mayoritariamente por lo que son negligentes siempre.",
+                "Las demandas judiciales no pueden ser por falta de registros sobre su tratamiento y prevención."
+            ],
+            correct: 1 // b [cite: 89, 94]
+        },
+        {
+            id: 20,
+            q: "Señala la respuesta CORRECTA con respecto a los principios generales de la geriatría:",
+            options: [
+                "Envejecer es lo mismo que enfermar.",
+                "El anciano es un adulto mayor.",
+                "La geriatría es la medicina interna del anciano.",
+                "Son falsas a, b y c.",
+                "Todas son falsas."
+            ],
+            correct: 4 // e [cite: 97, 102]
+        },
+        {
+            id: 21,
+            q: "Respecto a la gerontología, es INCORRECTO:",
+            options: [
+                "Estudia al hombre desde todos sus aspectos.",
+                "Su desarrollo como ciencia es reciente.",
+                "El peso de su estudio recae en la medicina.",
+                "Es la ciencia que estudia el proceso de envejecimiento del hombre."
+            ],
+            correct: 2 // c [cite: 103, 106]
+        },
+        {
+            id: 23,
+            q: "Entre las AVD-B NO está:",
+            options: [
+                "Desplazarse.",
+                "Bañarse y vestirse.",
+                "Comer.",
+                "Comunicarse."
+            ],
+            correct: 3 // d (Suele considerarse AVD instrumental) [cite: 108, 112]
+        },
+        {
+            id: 22,
+            q: "Señale la respuesta que NO corresponda. Para realizar una labor preventiva en caídas en ancianos en su domicilio:",
+            options: [
+                "La hipertensión ortostática es una de las causas más frecuentes de caídas.",
+                "El uso de absorbentes nocturnos está indicado para la prevención de caídas.",
+                "El uso de fármacos psicotrópicos puede aumentar la frecuencia de caías en personas polimedicadas que viven solas.",
+                "Debemos realizar una buena adaptación del hogar para su habitabilidad por personas mayores."
+            ],
+            correct: 1 // b [cite: 113, 116]
+        }
+    ];
+
+    let correctCount = 0;
+    let incorrectCount = 0;
+    const answered = new Set();
+
+    function renderQuiz() {
+        const container = document.getElementById('quiz-container');
+        const grid = document.getElementById('markerGrid');
+
+        questions.forEach((q, qIdx) => {
+            // Crear carta de pregunta
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            card.id = `q-card-${qIdx}`;
+            card.innerHTML = `<h3>${q.id}. ${q.q}</h3>`;
+
+            const optionsList = document.createElement('div');
+            optionsList.className = 'options-list';
+
+            q.options.forEach((opt, optIdx) => {
+                const optDiv = document.createElement('div');
+                optDiv.className = 'option';
+                optDiv.innerText = `${String.fromCharCode(97 + optIdx)}. ${opt}`;
+                optDiv.onclick = () => checkAnswer(qIdx, optIdx, optDiv);
+                optionsList.appendChild(optDiv);
+            });
+
+            card.appendChild(optionsList);
+            container.appendChild(card);
+
+            // Crear punto en el marcador
+            const dot = document.createElement('div');
+            dot.className = 'marker-dot';
+            dot.id = `dot-${qIdx}`;
+            dot.innerText = q.id;
+            dot.onclick = () => document.getElementById(`q-card-${qIdx}`).scrollIntoView({behavior: "smooth"});
+            grid.appendChild(dot);
+        });
+    }
+
+    function checkAnswer(qIdx, optIdx, element) {
+        if (answered.has(qIdx)) return;
+        answered.add(qIdx);
+
+        const isCorrect = optIdx === questions[qIdx].correct;
+        const dot = document.getElementById(`dot-${qIdx}`);
+
+        if (isCorrect) {
+            element.classList.add('selected-correct');
+            dot.classList.add('correct');
+            correctCount++;
+        } else {
+            element.classList.add('selected-incorrect');
+            dot.classList.add('incorrect');
+            incorrectCount++;
+            
+            // Mostrar la correcta
+            const card = document.getElementById(`q-card-${qIdx}`);
+            const options = card.querySelectorAll('.option');
+            options[questions[qIdx].correct].classList.add('reveal-correct');
+        }
+
+        updateStats();
+    }
+
+    function updateStats() {
+        document.getElementById('stats').innerText = `Correctas: ${correctCount} | Erróneas: ${incorrectCount}`;
+    }
+
+    renderQuiz();
+</script>
+
+</body>
+</html>
